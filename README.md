@@ -1,120 +1,103 @@
 # To-Do List Application
 
-A clean, auth-ready full-stack task management app with persistent PostgreSQL storage.
+A clean, auth-ready full-stack task management app with persistent MongoDB storage.
 
 ## Features
 
 - ✅ JWT authentication APIs (`register`, `login`, `me`)
 - ✅ Protected task APIs with ownership checks
 - ✅ Full CRUD on tasks (`create`, `read`, `update`, `delete`)
-- ✅ Task priority levels (Low / Medium / High) with color badges
 - ✅ Inline edit mode for tasks
 - ✅ Filter tasks (all / active / done)
 - ✅ Search tasks by title/description
-- ✅ Update user profile (name, email, password)
-- ✅ Admin panel with sidebar (Dashboard, Users, All Tasks)
-- ✅ Full admin CRUD for users and tasks via modal forms
 - ✅ Automatic toast notifications
 - ✅ Loading skeletons and empty states
 - ✅ Fully responsive React + Vite frontend
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18 + Vite |
-| Backend | Node.js + Express 4 |
-| Database | PostgreSQL via Sequelize ORM |
-| Auth | JWT + bcryptjs |
+- ✅ Organized full-stack project structure for scaling
 
 ## Project Structure
 
 ```text
-todo-list-app/
+todo-mern-app/
   client/    # React + Vite frontend
-  server/    # Express + PostgreSQL backend
+  server/    # Express + MongoDB backend
 ```
 
 ## Quick Start
 
-### 1. Install dependencies
+### 1. Install dependencies:
 
 ```bash
 npm install
 npm run install-all
 ```
 
-### 2. PostgreSQL setup
+### 2. Backend environment setup
 
-1. **Install PostgreSQL** (if not already installed):
-   - Windows: [PostgreSQL Downloads](https://www.postgresql.org/download/windows/)
-   - macOS: `brew install postgresql`
-   - Linux: `sudo apt install postgresql`
+#### Option A: Local MongoDB (Recommended for development)
 
-2. **Create a database**:
-   ```sql
-   CREATE DATABASE todo_app;
+1. **Install MongoDB** (if not already installed):
+   - Windows: [MongoDB Community Download](https://www.mongodb.com/try/download/community)
+   - macOS: `brew install mongodb-community`
+   - Linux: Follow the [official docs](https://docs.mongodb.com/manual/installation/)
+
+2. **Start MongoDB**:
+   ```bash
+   # Windows
+   net start MongoDB
+   
+   # macOS/Linux
+   mongod
    ```
 
-3. **Create server `.env`** (inside `server/`):
-   ```env
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=todo_app
-   DB_USER=postgres
-   DB_PASSWORD=your_password
-   JWT_SECRET=your_secure_random_secret
+3. **Create server `.env`**:
+   ```bash
+   cd server
+   copy .env.example .env
+   ```
+   Default config is pre-filled and will work with local MongoDB.
+
+#### Option B: MongoDB Atlas (Cloud)
+
+1. Create a **free tier** account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register).
+
+2. Create a cluster and get your connection URI.
+
+3. **Create server `.env`**:
+   ```bash
+   cd server
+   copy .env.example .env
+   ```
+
+4. **Update `.env`** with your Atlas URI:
+   ```
+   MONGO_URI=mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/todo_mern?retryWrites=true&w=majority
+   JWT_SECRET=your_secure_random_secret_here
+   JWT_EXPIRES_IN=7d
    CLIENT_ORIGIN=http://localhost:5173
    ```
 
-Sequelize will auto-create the tables on first run.
-
-### 3. Seed admin account (optional)
+### 3. Frontend environment (optional)
 
 ```bash
+cd ../client
+copy .env.example .env
+```
+
+Default points to `http://localhost:5000/api/v1`.
+
+### 4. Seed admin account (Optional)
+
+To create a default super admin account for testing:
+
+```bash
+cd server
 npm run seed
 ```
 
 **Default Master Admin Credentials** (⚠️ Change after first login):
 - **Email**: `master@admin.com`
 - **Password**: `MasterAdmin@2026`
-
-### 4. Run the app
-
-```bash
-npm run dev
-```
-
-Opens:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5000/api/v1
-
-## API Endpoints
-
-### Auth
-| Method | Route | Description |
-|--------|-------|-------------|
-| POST | `/api/v1/auth/register` | Register |
-| POST | `/api/v1/auth/login` | Login |
-| GET | `/api/v1/auth/me` | Get current user |
-| PUT | `/api/v1/auth/profile` | Update profile |
-
-### Tasks
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/v1/tasks` | List own tasks |
-| POST | `/api/v1/tasks` | Create task |
-| PUT | `/api/v1/tasks/:id` | Update task |
-| DELETE | `/api/v1/tasks/:id` | Delete task |
-
-### Admin (requires admin role)
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/v1/admin/stats` | Dashboard stats |
-| GET/POST | `/api/v1/admin/users` | List / create users |
-| PUT/DELETE | `/api/v1/admin/users/:id` | Update / delete user |
-| GET/POST | `/api/v1/admin/tasks` | List / create tasks |
-| PUT/DELETE | `/api/v1/admin/tasks/:id` | Update / delete task |
 
 ### 5. Run the app
 
@@ -188,4 +171,15 @@ npm run build --prefix client
 # Start server (production)
 cd server && npm start
 ```
+
+## Next Steps
+
+- [ ] Build admin dashboard to view all users and tasks
+- [ ] Add admin-only endpoints (delete users, view all tasks, etc.)
+- [ ] Implement refresh token flow & token invalidation on logout
+- [ ] Add task tags/categories
+- [ ] Implement task due date reminders
+- [ ] Add dark mode toggle
+- [ ] Write integration tests (Jest + React Testing Library)
+- [ ] Deploy to Vercel + Heroku or similar
 

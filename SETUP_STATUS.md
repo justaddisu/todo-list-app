@@ -5,18 +5,18 @@
 
 The application is currently located at:
 ```
-C:\Users\hp\Desktop\UoG-Projects\GithubRepository\todo-list-app\
+C:\Users\hp\Desktop\UoG-Projects\GithubRepository\todo-mern-app\
 ```
 
 **To rename to "To-Do List Application":**
 1. Close VS Code and all terminals
-2. Right-click the `todo-list-app` folder in File Explorer
+2. Right-click the `todo-mern-app` folder in File Explorer
 3. Click "Rename" and type: `To-Do List Application`
 
 Or via PowerShell (after closing all processes):
 ```powershell
 cd C:\Users\hp\Desktop\UoG-Projects\GithubRepository
-Rename-Item -Path "todo-list-app" -NewName "To-Do List Application"
+Rename-Item -Path "todo-mern-app" -NewName "To-Do List Application"
 ```
 
 ---
@@ -34,7 +34,7 @@ Rename-Item -Path "todo-list-app" -NewName "To-Do List Application"
 - ✅ **NEW:** Polished responsive design with CSS variables
 - ✅ Production build passes validation (192 KB gzipped)
 
-### Backend (Express + Node.js + PostgreSQL)
+### Backend (Express + Node.js)
 - ✅ User authentication (register, login, me endpoint)
 - ✅ Password hashing with bcryptjs
 - ✅ JWT token generation and validation
@@ -48,11 +48,10 @@ Rename-Item -Path "todo-list-app" -NewName "To-Do List Application"
 - ✅ **NEW:** Database seed script for default admin account
 - ✅ Syntax validation passes
 
-### Database (PostgreSQL)
+### Database (MongoDB)
 - ✅ User model with fields: name, email, password, role, isAdmin, timestamps
-- ✅ Task model with fields: title, description, completed, priority, dueDate, owner, timestamps
-- ✅ Sequelize schema validation and UUID primary keys
-- ✅ Auto-migration guard for new columns on existing databases
+- ✅ Task model with fields: title, description, completed, dueDate, owner, timestamps
+- ✅ Mongoose schema validation
 
 ### Application Naming
 - ✅ Renamed from "MERN App" to "**To-Do List Application**"
@@ -64,19 +63,29 @@ Rename-Item -Path "todo-list-app" -NewName "To-Do List Application"
 
 ## 📋 What Still Needs to Be Done
 
-### 1. **PostgreSQL Setup (REQUIRED to run)**
-   - Install PostgreSQL and create a database named `todo_app`
-   - Create `server/.env` with your DB credentials:
-     ```env
-     DB_HOST=localhost
-     DB_PORT=5432
-     DB_NAME=todo_app
-     DB_USER=postgres
-     DB_PASSWORD=your_password
-     JWT_SECRET=your_secure_random_secret
-     CLIENT_ORIGIN=http://localhost:5173
+### 1. **MongoDB Setup (REQUIRED to run)**
+   - [ ] **Option A: Local MongoDB (Recommended if already on Windows)**
+     ```bash
+     # Option 1: Download & Install from MongoDB Community
+     # https://www.mongodb.com/try/download/community
+     # Run installer with default options
+     
+     # Option 2: Use Homebrew (macOS)
+     # brew install mongodb-community
+     # brew services start mongodb-community
      ```
-   - Sequelize will auto-create all tables on first run
+   
+   - [ ] **Option B: MongoDB Atlas (Cloud - Easiest)**
+     1. Go to [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+     2. Sign up for free account
+     3. Create cluster (M0 free tier)
+     4. Create database user (Database Access)
+     5. Whitelist IP (Network Access) - set to 0.0.0.0/0
+     6. Copy connection string
+     7. Update `server/.env`:
+        ```
+        MONGO_URI=mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/todo_list_app?retryWrites=true&w=majority
+        ```
 
 ### 2. **Initialize Admin Account**
    ```bash
@@ -91,7 +100,7 @@ Rename-Item -Path "todo-list-app" -NewName "To-Do List Application"
 
 ### 3. **Run the Application**
    ```bash
-   # From project root (todo-list-app/)
+   # From project root (todo-mern-app/)
    npm run dev
    ```
    
@@ -123,7 +132,7 @@ This will initialize the database with the master admin account if it doesn't al
 ## 📁 Project File Structure
 
 ```
-todo-list-app/
+todo-mern-app/
   client/
     src/
       components/     # Auth, TaskForm, TaskList, TaskItem
@@ -157,9 +166,9 @@ todo-list-app/
 ## ✨ Key Technologies Used
 
 - **Frontend:** React 18, Vite 8, Axios
-- **Backend:** Express 4, Node.js
+- **Backend:** Express 4, Node.js, MongoDB 8.3
 - **Auth:** JWT (jsonwebtoken), bcryptjs
-- **Database:** PostgreSQL via Sequelize 6 ORM
+- **Database:** Mongoose 8.5
 
 ---
 
@@ -197,8 +206,8 @@ todo-list-app/
 
 ## ❓ FAQ
 
-**Q: Can I run without PostgreSQL installed locally?**
-A: You need a PostgreSQL instance. You can use a free cloud PG provider like [Neon](https://neon.tech) or [Supabase](https://supabase.com) and set the DB credentials in `server/.env`.
+**Q: Can I run without MongoDB installed locally?**
+A: Yes! Use MongoDB Atlas (cloud). Sign up free at mongodb.com/cloud/atlas.
 
 **Q: Where do I change default admin password?**
 A: After login with default admin credentials, update your profile (feature available in future release).
@@ -207,4 +216,4 @@ A: After login with default admin credentials, update your profile (feature avai
 A: Drop the database and run `npm run seed` again.
 
 **Q: Can regular users become admins?**
-A: Yes. Use the Admin Panel → Users page to edit any user and toggle the admin flag.
+A: Currently no. Update the User document directly in MongoDB to set `isAdmin: true` and `role: "admin"`.
