@@ -172,14 +172,3 @@ npm run build --prefix client
 cd server && npm start
 ```
 
-## Next Steps
-
-- [ ] Build admin dashboard to view all users and tasks
-- [ ] Add admin-only endpoints (delete users, view all tasks, etc.)
-- [ ] Implement refresh token flow & token invalidation on logout
-- [ ] Add task tags/categories
-- [ ] Implement task due date reminders
-- [ ] Add dark mode toggle
-- [ ] Write integration tests (Jest + React Testing Library)
-- [ ] Deploy to Vercel + Heroku or similar
-
