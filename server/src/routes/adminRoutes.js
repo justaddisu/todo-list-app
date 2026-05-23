@@ -4,6 +4,8 @@ import {
   createUser,
   deleteAnyTask,
   deleteUser,
+  getActivityLogs,
+  getAnalytics,
   getAllTasks,
   getAllUsers,
   getStats,
@@ -18,6 +20,8 @@ const router = Router();
 router.use(protect, isAdmin);
 
 router.get("/stats", getStats);
+router.get("/analytics", getAnalytics);
+router.get("/activity-logs", getActivityLogs);
 
 router.get("/users", getAllUsers);
 router.post("/users", createUser);

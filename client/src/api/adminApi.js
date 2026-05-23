@@ -5,6 +5,16 @@ export const getAdminStats = async () => {
   return data;
 };
 
+export const getAdminAnalytics = async () => {
+  const { data } = await http.get("/admin/analytics");
+  return data;
+};
+
+export const getAdminActivityLogs = async () => {
+  const { data } = await http.get("/admin/activity-logs");
+  return data;
+};
+
 export const getAdminUsers = async () => {
   const { data } = await http.get("/admin/users");
   return data;

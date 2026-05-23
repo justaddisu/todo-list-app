@@ -11,8 +11,11 @@ import { useAuth } from "./context/AuthContext";
 import {
   createTaskRequest,
   deleteTaskRequest,
+  getUpcomingRemindersRequest,
   listTasksRequest,
+  shareTaskRequest,
   updateTaskRequest,
+  getTagsRequest,
 } from "./api/tasksApi";
 
 const FILTERS = ["all", "active", "done"];
@@ -27,6 +30,9 @@ export default function App() {
   const [message, setMessage] = useState({ text: "", type: "" });
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [selectedTag, setSelectedTag] = useState(null);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [upcomingReminders, setUpcomingReminders] = useState([]);
   const msgTimerRef = useRef(null);
   const [adminView, setAdminView] = useState(false);
   const [adminPage, setAdminPage] = useState("dashboard");
@@ -51,8 +57,9 @@ export default function App() {
         if (filter === "done") return t.completed;
         return true;
       })
-      .filter((t) => !q || t.title.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q));
-  }, [tasks, filter, search]);
+      .filter((t) => !q || t.title.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q))
+      .filter((t) => !selectedTag || (t.tags && t.tags.includes(selectedTag)));
+  }, [tasks, filter, search, selectedTag]);
 
   const fetchTasks = async () => {
     setLoadingTasks(true);
@@ -66,9 +73,29 @@ export default function App() {
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const { tags } = await getTagsRequest();
+      setAvailableTags(tags);
+    } catch (error) {
+      console.error("Could not fetch tags", error);
+    }
+  };
+
+  const fetchUpcomingReminders = async () => {
+    try {
+      const data = await getUpcomingRemindersRequest();
+      setUpcomingReminders(data || []);
+    } catch {
+      setUpcomingReminders([]);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchTasks();
+      fetchTags();
+      fetchUpcomingReminders();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -94,6 +121,10 @@ export default function App() {
     try {
       const created = await createTaskRequest(task);
       setTasks((prev) => [created, ...prev]);
+      // Refresh tags if new tags were added
+      if (task.tags && task.tags.length > 0) {
+        fetchTags();
+      }
       notify("Task created successfully", "success");
     } catch (error) {
       notify(error.response?.data?.message || "Could not create task", "error");
@@ -113,10 +144,15 @@ export default function App() {
     try {
       const updated = await updateTaskRequest(id, payload);
       setTasks((prev) => prev.map((item) => (getTaskId(item) === getTaskId(updated) ? updated : item)));
+      // Refresh tags if tags were modified
+      if (payload.tags) {
+        fetchTags();
+      }
       notify("Task updated", "success");
     } catch (error) {
       notify(error.response?.data?.message || "Could not update task", "error");
     }
+  };
   };
 
   const handleDeleteTask = async (id) => {
@@ -126,6 +162,22 @@ export default function App() {
       notify("Task deleted", "info");
     } catch (error) {
       notify(error.response?.data?.message || "Could not delete task", "error");
+    }
+  };
+
+  const handleShareTask = async (task) => {
+    const userId = window.prompt("Enter user ID to share with:");
+    if (!userId) return;
+    const permission = window.prompt("Permission (view/edit):", "view") || "view";
+    try {
+      const updated = await shareTaskRequest(getTaskId(task), {
+        userId: userId.trim(),
+        permission: permission.trim().toLowerCase() === "edit" ? "edit" : "view",
+      });
+      setTasks((prev) => prev.map((item) => (getTaskId(item) === getTaskId(updated) ? updated : item)));
+      notify("Task shared", "success");
+    } catch (error) {
+      notify(error.response?.data?.message || "Could not share task", "error");
     }
   };
 
@@ -169,7 +221,7 @@ export default function App() {
       <main className="container auth-view">
         <section className="hero panel">
           <h1>📋 To-Do List Application</h1>
-          <p>Persistent task management with JWT-backed APIs and PostgreSQL storage.</p>
+          <p>Persistent task management with JWT-backed APIs and MongoDB storage.</p>
           <span className="badge">auth-ready</span>
         </section>
 
@@ -232,6 +284,19 @@ export default function App() {
         <p className={`toast toast--${message.type}`}>{message.text}</p>
       )}
 
+      {upcomingReminders.length > 0 && (
+        <section className="panel">
+          <h2>Upcoming reminders</h2>
+          <ul style={{ margin: 0, paddingLeft: "1rem" }}>
+            {upcomingReminders.slice(0, 5).map((task) => (
+              <li key={task.id}>
+                {task.title} {task.dueDate ? `- due ${new Date(task.dueDate).toLocaleString()}` : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <TaskForm onCreate={handleCreateTask} />
 
       <section className="controls panel">
@@ -256,12 +321,43 @@ export default function App() {
         </div>
       </section>
 
+      {availableTags.length > 0 && (
+        <section className="panel" style={{ padding: "1rem" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+            <span style={{ fontWeight: "500", marginRight: "0.5rem" }}>Tags:</span>
+            <button
+              type="button"
+              className={`filter-btn ${!selectedTag ? "active" : ""}`}
+              onClick={() => setSelectedTag(null)}
+              style={{ marginRight: "0.5rem" }}
+            >
+              All
+            </button>
+            {availableTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                className={`filter-btn ${selectedTag === tag ? "active" : ""}`}
+                onClick={() => setSelectedTag(tag)}
+                style={{
+                  background: selectedTag === tag ? "#1976d2" : "#f5f5f5",
+                  color: selectedTag === tag ? "white" : "black",
+                }}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <TaskList
         tasks={visibleTasks}
         loading={loadingTasks}
         onToggle={handleToggleTask}
         onEdit={handleEditTask}
         onDelete={handleDeleteTask}
+        onShare={handleShareTask}
       />
     </main>
   );

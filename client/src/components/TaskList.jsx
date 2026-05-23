@@ -1,6 +1,6 @@
 import TaskItem from "./TaskItem";
 
-export default function TaskList({ tasks, loading, onToggle, onEdit, onDelete }) {
+export default function TaskList({ tasks, loading, onToggle, onEdit, onDelete, onShare }) {
   if (loading) {
     return (
       <section className="panel">
@@ -35,6 +35,7 @@ export default function TaskList({ tasks, loading, onToggle, onEdit, onDelete })
             onToggle={onToggle}
             onEdit={onEdit}
             onDelete={onDelete}
+            onShare={onShare}
           />
         ))}
       </div>

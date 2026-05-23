@@ -1,7 +1,10 @@
 import { Op } from "sequelize";
 import { Task } from "../models/Task.js";
 import { User } from "../models/User.js";
+import { ActivityLog } from "../models/ActivityLog.js";
 import { normalizePriority } from "../utils/taskPriority.js";
+import { generateRecurringInstances } from "../utils/recurrence.js";
+import { logActivity } from "../utils/activityLogger.js";
 
 export const getStats = async (req, res, next) => {
   try {
@@ -16,6 +19,40 @@ export const getStats = async (req, res, next) => {
       totalTasks,
       completedTasks,
       pendingTasks: totalTasks - completedTasks,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const getActivityLogs = async (req, res, next) => {
+  try {
+    const logs = await ActivityLog.findAll({
+      order: [["createdAt", "DESC"]],
+      limit: 200,
+    });
+    return res.json(logs);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const getAnalytics = async (req, res, next) => {
+  try {
+    const [totalUsers, totalTasks, completedTasks, overdueTasks] = await Promise.all([
+      User.count(),
+      Task.count(),
+      Task.count({ where: { completed: true } }),
+      Task.count({ where: { completed: false, dueDate: { [Op.lt]: new Date() } } }),
+    ]);
+
+    const completionRate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+    return res.json({
+      totalUsers,
+      totalTasks,
+      completedTasks,
+      overdueTasks,
+      completionRate,
     });
   } catch (error) {
     return next(error);
@@ -48,6 +85,13 @@ export const deleteUser = async (req, res, next) => {
     }
 
     await user.destroy();
+    await logActivity({
+      actorId: req.user.id,
+      entityType: "user",
+      entityId: user.id,
+      action: "delete",
+      metadata: { email: user.email },
+    });
     return res.json({ message: "User deleted" });
   } catch (error) {
     return next(error);
@@ -75,6 +119,13 @@ export const deleteAnyTask = async (req, res, next) => {
     }
 
     await task.destroy();
+    await logActivity({
+      actorId: req.user.id,
+      entityType: "task",
+      entityId: task.id,
+      action: "admin_delete",
+      metadata: {},
+    });
     return res.json({ message: "Task deleted" });
   } catch (error) {
     return next(error);
@@ -106,6 +157,13 @@ export const createUser = async (req, res, next) => {
     });
 
     const { password: _pw, ...safe } = user.toJSON();
+    await logActivity({
+      actorId: req.user.id,
+      entityType: "user",
+      entityId: user.id,
+      action: "create",
+      metadata: { email: user.email },
+    });
     return res.status(201).json(safe);
   } catch (error) {
     return next(error);
@@ -138,6 +196,13 @@ export const updateUser = async (req, res, next) => {
 
     await user.save();
     const { password: _pw, ...safe } = user.toJSON();
+    await logActivity({
+      actorId: req.user.id,
+      entityType: "user",
+      entityId: user.id,
+      action: "update",
+      metadata: { email: user.email },
+    });
     return res.json(safe);
   } catch (error) {
     return next(error);
@@ -148,7 +213,18 @@ export const updateUser = async (req, res, next) => {
 
 export const createAnyTask = async (req, res, next) => {
   try {
-    const { title, description, priority, dueDate, completed, owner } = req.body;
+    const {
+      title,
+      description,
+      priority,
+      dueDate,
+      completed,
+      owner,
+      tags = [],
+      recurrence = "none",
+      recurrenceEnd = null,
+      reminderMinutes = [],
+    } = req.body;
     if (!title) {
       res.status(400);
       throw new Error("Title is required");
@@ -164,13 +240,44 @@ export const createAnyTask = async (req, res, next) => {
       throw new Error("Owner user not found");
     }
 
+    // Validate and normalize tags
+    let normalizedTags = [];
+    if (Array.isArray(tags)) {
+      normalizedTags = tags
+        .map(tag => (typeof tag === "string" ? tag.trim() : ""))
+        .filter(tag => tag.length > 0 && tag.length <= 30)
+        .slice(0, 10); // Max 10 tags
+    }
+
     const task = await Task.create({
       title,
       description: description || "",
       priority: normalizePriority(priority) || "medium",
       dueDate: dueDate || null,
       completed: completed === true || completed === "true",
+      tags: normalizedTags,
+      recurrence: recurrence && ["none", "daily", "weekly", "biweekly", "monthly"].includes(recurrence) ? recurrence : "none",
+      recurrenceEnd: recurrenceEnd || null,
+      reminderMinutes: Array.isArray(reminderMinutes)
+        ? reminderMinutes.map((m) => Number(m)).filter((m) => Number.isFinite(m) && m >= 0)
+        : [],
       owner,
+    });
+
+    // Generate recurring instances if recurrence is enabled
+    if (recurrence && recurrence !== "none") {
+      const instances = await generateRecurringInstances(task);
+      if (instances.length > 0) {
+        await Task.bulkCreate(instances);
+      }
+    }
+
+    await logActivity({
+      actorId: req.user.id,
+      entityType: "task",
+      entityId: task.id,
+      action: "admin_create",
+      metadata: { owner },
     });
 
     const fullTask = await Task.findByPk(task.id, {
@@ -191,7 +298,18 @@ export const updateAnyTask = async (req, res, next) => {
       throw new Error("Task not found");
     }
 
-    const { title, description, priority, dueDate, completed, owner } = req.body;
+    const {
+      title,
+      description,
+      priority,
+      dueDate,
+      completed,
+      owner,
+      tags,
+      recurrence,
+      recurrenceEnd,
+      reminderMinutes,
+    } = req.body;
 
     if (owner) {
       const ownerUser = await User.findByPk(owner);
@@ -211,7 +329,36 @@ export const updateAnyTask = async (req, res, next) => {
     if (dueDate !== undefined) task.dueDate = dueDate || null;
     if (completed !== undefined) task.completed = completed === true || completed === "true";
 
+    if (Array.isArray(tags)) {
+      const normalizedTags = tags
+        .map(tag => (typeof tag === "string" ? tag.trim() : ""))
+        .filter(tag => tag.length > 0 && tag.length <= 30)
+        .slice(0, 10); // Max 10 tags
+      task.tags = normalizedTags;
+    }
+
+    if (recurrence !== undefined) {
+      task.recurrence = recurrence && ["none", "daily", "weekly", "biweekly", "monthly"].includes(recurrence) ? recurrence : "none";
+    }
+
+    if (recurrenceEnd !== undefined) {
+      task.recurrenceEnd = recurrenceEnd || null;
+    }
+
+    if (Array.isArray(reminderMinutes)) {
+      task.reminderMinutes = reminderMinutes
+        .map((m) => Number(m))
+        .filter((m) => Number.isFinite(m) && m >= 0);
+    }
+
     await task.save();
+    await logActivity({
+      actorId: req.user.id,
+      entityType: "task",
+      entityId: task.id,
+      action: "admin_update",
+      metadata: { owner: task.owner },
+    });
 
     const fullTask = await Task.findByPk(task.id, {
       include: [{ model: User, as: "User", attributes: ["id", "name", "email"] }],

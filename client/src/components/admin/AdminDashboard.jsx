@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
-import { getAdminStats } from "../../api/adminApi";
+import { getAdminActivityLogs, getAdminAnalytics, getAdminStats } from "../../api/adminApi";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    getAdminStats()
-      .then(setStats)
+    Promise.all([getAdminStats(), getAdminAnalytics(), getAdminActivityLogs()])
+      .then(([statsData, analyticsData, logsData]) => {
+        setStats(statsData);
+        setAnalytics(analyticsData);
+        setLogs(Array.isArray(logsData) ? logsData : []);
+      })
       .catch((err) => setError(err.response?.data?.message || "Failed to load stats"))
       .finally(() => setLoading(false));
   }, []);
@@ -57,6 +63,29 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      {analytics && (
+        <section className="panel" style={{ marginTop: "1rem" }}>
+          <h3>Analytics</h3>
+          <p>Completion rate: <strong>{analytics.completionRate}%</strong></p>
+          <p>Overdue tasks: <strong>{analytics.overdueTasks}</strong></p>
+        </section>
+      )}
+
+      <section className="panel" style={{ marginTop: "1rem" }}>
+        <h3>Recent activity</h3>
+        {logs.length === 0 ? (
+          <p>No activity yet.</p>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: "1rem" }}>
+            {logs.slice(0, 8).map((log) => (
+              <li key={log.id}>
+                {log.action} {log.entityType} at {new Date(log.createdAt).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
