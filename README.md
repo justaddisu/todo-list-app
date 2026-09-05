@@ -75,6 +75,7 @@ npm run install-all
    JWT_SECRET=your_secure_random_secret_here
    JWT_EXPIRES_IN=7d
    CLIENT_ORIGIN=http://localhost:5173
+   PRODUCT_KEY=MY_PRODUCT_KEY
    ```
 
 ### 3. Frontend environment (optional)
@@ -171,4 +172,6 @@ npm run build --prefix client
 # Start server (production)
 cd server && npm start
 ```
+
+Original work and implementation by Addisu Dessalegn.
 
